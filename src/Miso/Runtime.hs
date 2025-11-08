@@ -782,6 +782,27 @@ buildVTree hydrate (VNode ns tag attrs kids) snk logLevel events = do
           where
             setNextSibling xs =
               zipWithM_ (<# ("nextSibling" :: MisoString)) xs (drop 1 xs)
+buildVTree hydrate (VFragment kids) snk logLevel events = do
+  vfragment <- create
+  FFI.set "type" ("vfragment" :: JSString) vfragment
+  eventsObj <- create
+  FFI.set "events" eventsObj vfragment
+  sync <- FFI.shouldSync =<< toJSVal vfragment
+  FFI.set "shouldSync" sync vfragment
+  setAttrs vfragment [] snk logLevel events
+  vchildren <- toJSVal =<< procreate
+  FFI.set "children" vchildren vfragment
+  pure $ VTree vfragment
+    where
+      procreate = do
+        kidsViews <- forM kids $ \kid -> do
+          VTree (Object vtree) <- buildVTree hydrate kid snk logLevel events
+          pure vtree
+        setNextSibling kidsViews
+        pure kidsViews
+          where
+            setNextSibling xs =
+              zipWithM_ (<# ("nextSibling" :: MisoString)) xs (drop 1 xs)
 buildVTree _ (VText t) _ _ _ = do
   vtree <- create
   FFI.set "type" ("vtext" :: JSString) vtree

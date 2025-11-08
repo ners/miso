@@ -81,6 +81,7 @@ renderBuilder (VNode _ tag attrs children) =
     | tag `notElem` ["img", "input", "br", "hr", "meta", "link"]
     ]
   ]
+renderBuilder (VFragment vs) = mconcat $ renderBuilder <$> vs
 renderBuilder (VComp ns tag attrs (SomeComponent vcomp)) =
   renderBuilder (VNode ns tag attrs vkids)
     where

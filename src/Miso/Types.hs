@@ -252,6 +252,7 @@ data View model action
   = VNode NS MisoString [Attribute action] [View model action]
   | VText MisoString
   | VComp NS MisoString [Attribute action] (SomeComponent model)
+  | VFragment [View model action]
   deriving Functor
 -----------------------------------------------------------------------------
 -- | Existential wrapper used to allow the nesting of t'Miso.Types.Component' in t'Miso.Types.Component'

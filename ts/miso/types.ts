@@ -54,7 +54,13 @@ type VText = {
   key: string;
 };
 
-type VTree = VComp | VNode | VText;
+type VFragment = {
+  type: 'vfragment';
+  domRef: DOMRef;
+  children: Array<VTree>;
+};
+
+type VTree = VComp | VNode | VText | VFragment;
 
 type EventObject = {
   options: Options;
@@ -118,6 +124,7 @@ export {
   VComp,
   VNode,
   VText,
+  VFragment,
   EventCapture,
   EventObject,
   Options,

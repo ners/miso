@@ -1,5 +1,5 @@
 import { diff } from '../miso/dom';
-import { vnode, vcomp, vtext, vnodeKeyed, vtextKeyed } from '../miso/smart';
+import { vnode, vcomp, vtext, vfragment, vnodeKeyed, vtextKeyed } from '../miso/smart';
 import { VNode, VTree } from '../miso/types';
 import { test, expect, describe, afterEach, beforeAll } from 'bun:test';
 import { context } from '../miso/context/dom';
@@ -193,6 +193,26 @@ describe('DOM tests', () => {
 
     // remove children from DOM
     var tree2 = vnode({ children: [] });
+    diff(tree1, tree2, document.body, context);
+    expect(tree2.domRef.childNodes.length).toBe(0);
+  });
+
+  test('Should create fragments', () => {
+    // populate DOM
+    var tree = vfragment({ children: [vnode({})] });
+    diff(null, tree, document.body, context);
+    expect(tree.domRef.children.length).toBe(1);
+    expect(tree.children.length).toBe(1);
+  });
+
+  test('Should remove a fragment child', () => {
+    // populate DOM
+    var tree1 = vfragment({ children: [vnode({})] });
+    diff(null, tree1, document.body, context);
+    expect(tree1.domRef.children.length).toBe(1);
+
+    // remove children from DOM
+    var tree2 = vfragment({ children: [] });
     diff(tree1, tree2, document.body, context);
     expect(tree2.domRef.childNodes.length).toBe(0);
   });

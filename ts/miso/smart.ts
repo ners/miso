@@ -32,6 +32,10 @@ export function vcomp(props: Partial<VComp>): VComp {
   return union(mkVComp(), props);
 }
 
+export function vfragment(props: Partial<VFragment>): VFragment {
+  return union(mkVFragment(), props);
+}
+
 /* set union */
 function union<T extends object>(obj: T, updates: Partial<T>): T {
   return Object.assign({}, obj, updates);
@@ -86,3 +90,10 @@ function mkVComp() : VComp {
   });
 }
 
+function mkVFragment() : VFragment {
+  return {
+    type : 'vfragment',
+    domRef: null,
+    children: [],
+  };
+}

@@ -199,8 +199,11 @@ function walk(logLevel: boolean, vtree: VTree, node: Node, context: Context): bo
     case 'vtext':
       (vtree as VText)['domRef'] = node as Text;
       break;
-    default:
+    case 'vfragment':
+      (vtree as VFragment)['domRef'] = node as DOMRef;
+    case 'vnode':
       (vtree as VNode)['domRef'] = node as DOMRef;
+    default:
       vtree['children'] = collapseSiblingTextNodes(vtree['children']);
       // Fire onCreated events as though the elements had just been created.
       callCreated(vtree, context);

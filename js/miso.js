@@ -213,21 +213,18 @@ function diff(currentObj, newObj, parent, context) {
     create(newObj, parent, context);
   else if (!newObj)
     destroy(currentObj, parent, context);
-  else {
-    if (currentObj["type"] === newObj["type"]) {
-      diffNodes(currentObj, newObj, parent, context);
-    } else {
-      replace(currentObj, newObj, parent, context);
-    }
-  }
+  else
+    diffNodes(currentObj, newObj, parent, context);
 }
 function replace(c, n, parent, context) {
   callBeforeDestroyedRecursive(c);
   if (n["type"] === "vtext") {
     n["domRef"] = context["createTextNode"](n["text"]);
     context["replaceChild"](parent, n["domRef"], c["domRef"]);
+  } else if (n["type"] === "vfragment") {
+    populateDomRef(n, parent, context);
   } else {
-    createElement(n, context, (newChild) => {
+    createElement(n, parent, context, (newChild) => {
       context["replaceChild"](parent, newChild, c["domRef"]);
     });
   }
@@ -239,14 +236,12 @@ function destroy(obj, parent, context) {
   callDestroyedRecursive(obj);
 }
 function diffNodes(c, n, parent, context) {
-  if (c["type"] === "vtext") {
+  if (c["type"] === "vtext" && n["type"] === "vtext") {
     if (c["text"] !== n["text"]) {
       context["setTextContent"](c["domRef"], n["text"]);
     }
     n["domRef"] = c["domRef"];
-    return;
-  }
-  if (n["tag"] === c["tag"] && n["key"] === c["key"] && n["type"] === c["type"]) {
+  } else if (n["tag"] === c["tag"] && n["key"] === c["key"] && n["type"] === c["type"]) {
     n["domRef"] = c["domRef"];
     populate(c, n, context);
   } else {
@@ -290,11 +285,17 @@ function callBeforeCreated(obj) {
 }
 function populate(c, n, context) {
   if (n["type"] !== "vtext") {
-    if (!c)
-      c = vnode({});
+    if (!c) {
+      if (n["type"] === "vfragment")
+        c = vfragment({});
+      else
+        c = vnode({});
+    }
     diffProps(c["props"], n["props"], n["domRef"], n["ns"] === "svg", context);
     diffCss(c["css"], n["css"], n["domRef"], context);
     if (n["type"] === "vnode") {
+      diffChildren(c, n, n["domRef"], context);
+    } else if (n["type"] === "vfragment") {
       diffChildren(c, n, n["domRef"], context);
     }
     drawCanvas(n);
@@ -350,23 +351,25 @@ function diffChildren(c, n, parent, context) {
   if (c["shouldSync"] && n["shouldSync"]) {
     syncChildren(c.children, n.children, parent, context);
   } else {
-    const longest = n.children.length > c.children.length ? n.children.length : c.children.length;
+    const longest = Math.max(c.children.length, n.children.length);
     for (let i = 0;i < longest; i++)
       diff(c.children[i], n.children[i], parent, context);
   }
 }
-function populateDomRef(obj, context) {
+function populateDomRef(obj, parent, context) {
   if (obj["ns"] === "svg") {
     obj["domRef"] = context["createElementNS"]("http://www.w3.org/2000/svg", obj["tag"]);
   } else if (obj["ns"] === "mathml") {
     obj["domRef"] = context["createElementNS"]("http://www.w3.org/1998/Math/MathML", obj["tag"]);
+  } else if (obj["type"] === "vfragment") {
+    obj["domRef"] = parent;
   } else {
     obj["domRef"] = context["createElement"](obj["tag"]);
   }
 }
-function createElement(obj, context, attach) {
+function createElement(obj, parent, context, attach) {
   callBeforeCreated(obj);
-  populateDomRef(obj, context);
+  populateDomRef(obj, parent, context);
   callCreated(obj, context);
   attach(obj["domRef"]);
   populate(null, obj, context);
@@ -395,8 +398,11 @@ function create(obj, parent, context) {
   if (obj["type"] === "vtext") {
     obj["domRef"] = context["createTextNode"](obj["text"]);
     context["appendChild"](parent, obj["domRef"]);
+  } else if (obj["type"] === "vfragment") {
+    obj["domRef"] = parent;
+    obj["children"].forEach((child) => create(child, parent, context));
   } else {
-    createElement(obj, context, (child) => {
+    createElement(obj, parent, context, (child) => {
       context["appendChild"](parent, child);
     });
   }
@@ -458,7 +464,7 @@ function syncChildren(os, ns, parent, context) {
         context["insertBefore"](parent, node["domRef"], os[oldFirstIndex]["domRef"]);
         newFirstIndex++;
       } else {
-        createElement(nFirst, context, (e) => {
+        createElement(nFirst, parent, context, (e) => {
           context["insertBefore"](parent, e, oFirst["domRef"]);
         });
         os.splice(oldFirstIndex++, 0, nFirst);
@@ -751,8 +757,11 @@ function walk(logLevel, vtree, node, context) {
     case "vtext":
       vtree["domRef"] = node;
       break;
-    default:
+    case "vfragment":
       vtree["domRef"] = node;
+    case "vnode":
+      vtree["domRef"] = node;
+    default:
       vtree["children"] = collapseSiblingTextNodes(vtree["children"]);
       callCreated(vtree, context);
       for (var i = 0;i < vtree["children"].length; i++) {
